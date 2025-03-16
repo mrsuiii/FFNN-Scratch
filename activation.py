@@ -37,7 +37,7 @@ def relu(x: Value):
 
 if __name__ == "__main__":
     from Value import draw_dot
-    from activation import tanh, relu
+    from activation import tanh
 
     x1 = Value(0.5, label="x1")
     x2 = Value(-1.2, label="x2")
