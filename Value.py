@@ -1,4 +1,3 @@
-import math
 from typing import Callable, Union, Tuple, Set
 from graphviz import Digraph
 

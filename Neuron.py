@@ -1,4 +1,3 @@
-import random
 from Value import Value
 from activation import linear
 from weight_init import zero_init
