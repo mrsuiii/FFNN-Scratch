@@ -1,77 +1,109 @@
 from typing import Callable, Union, Tuple, Set
 from graphviz import Digraph
-
+import numpy as np
 class Value:
-    def __init__(self, data: float, _children: Tuple["Value", ...] = (), _op: str = '', label: str = ''):
-        self.data: float = data
-        self.grad: float = 0.0
-        self._backward: Callable[[], None] = lambda: None
-        self._prev: Set["Value"] = set(_children)
-        self._op: str = _op
-        self.label: str = label
+    def backward(self, grad=None):
+        if grad is None:
+            grad = np.ones_like(self.data)
+        self.grad = grad if self.grad is None else self.grad + grad
 
-    def __repr__(self) -> str:
-        return f"Value(data = {self.data})"
+        # Topological sort untuk menentukan urutan backward yang benar
+        topo = []
+        visited = set()
+        def build_topo(t):
+            if t not in visited:
+                visited.add(t)
+                for child in t._prev:
+                    build_topo(child)
+                topo.append(t)
+        build_topo(self)
+        for t in reversed(topo):
+            t._backward()
 
-    def __add__(self, other: Union["Value", float]) -> "Value":
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data + other.data, (self, other), '+')
-
-        def backward() -> None:
-            self.grad += 1.0 * out.grad
-            other.grad += 1.0 * out.grad
-
-        out._backward = backward
+    def __add__(self, other):
+        if not isinstance(other, Value):
+            other = Value(other)
+        out = Value(self.data + other.data)
+        out._prev = {self, other}
+        def _backward():
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + out.grad
+        out._backward = _backward
         return out
 
-    def __mul__(self, other: Union["Value", float]) -> "Value":
-        other = other if isinstance(other, Value) else Value(other)
-        out = Value(self.data * other.data, (self, other), '*')
-
-        def backward() -> None:
-            self.grad += other.data * out.grad
-            other.grad += self.data * out.grad
-
-        out._backward = backward
+    def __mul__(self, other):
+        if not isinstance(other, Value):
+            other = Value(other)
+        out = Value(self.data * other.data)
+        out._prev = {self, other}
+        def _backward():
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + other.data * out.grad
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data * out.grad
+        out._backward = _backward
         return out
 
-    def __pow__(self, other: Union[int, float]) -> "Value":
-        if not isinstance(other, (int, float)):
-            raise NotImplementedError()
-
-        out = Value(self.data ** other, (self,), f"**{other}")
-
-        def backward() -> None:
-            self.grad += other * (self.data ** (other - 1)) * out.grad
-
-        out._backward = backward
+    def matmul(self, other):
+        out = Value(self.data.dot(other.data))
+        out._prev = {self, other}
+        def _backward():
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.dot(other.data.T)
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data.T.dot(out.grad)
+        out._backward = _backward
         return out
 
-    def __rmul__(self, other: Union["Value", float]) -> "Value":
-        return self * other  # Uses __mul__
+    def relu(self):
+        out = Value(np.maximum(0, self.data))
+        out._prev = {self}
+        def _backward():
+            grad = (self.data > 0).astype(np.float32)
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad * out.grad
+        out._backward = _backward
+        return out
 
-    def __truediv__(self, other: Union["Value", float]) -> "Value":
-        return self * other**-1
+    def log(self):
+        """Logaritma natural dari Value dengan pencatatan gradien."""
+        out = Value(np.log(self.data))
+        out._prev = {self}
+        def _backward():
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + (1 / self.data) * out.grad
+        out._backward = _backward
+        return out
 
-    def __neg__(self) -> "Value":
-        return self * -1
+    def __neg__(self):
+        return self * (-1)
+    def transpose(self):
+        """Mengembalikan Value dengan data yang telah di-transpose."""
+        out = Value(self.data.T, label=f"({self.label}^T)", _op="T")
+        out._prev = {self}
+        def _backward():
+            # Gradien dari operasi transpose juga harus di-transpose kembali
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.T
+        out._backward = _backward
+        return out
 
-    def __sub__(self, other: Union["Value", float]) -> "Value":
-        return self + (-other)
+    @property
+    def T(self):
+        return self.transpose()
+def mean(t: Value) -> Value:
+    data = np.mean(t.data)
+    out = Value(data)
+    out._prev = {t}
+    def _backward():
+        grad = np.ones_like(t.data) * (1 / t.data.size) * out.grad
+        t.grad = (t.grad if t.grad is not None else np.zeros_like(t.data)) + grad
+    out._backward = _backward
+    return out
 
-    def __radd__(self, other: Union["Value", float]) -> "Value":
-        return self + other
-
-    def back(self) -> None:
-        self.grad = 1.0
-        nodes = [self]
-        while len(nodes) > 0:
-            new_nodes = []
-            for node in nodes:
-                node._backward()
-                new_nodes.extend(node._prev)
-            nodes = new_nodes
-
+# Fungsi sum sepanjang axis tertentu (misalnya axis=1 untuk CCE)
+def sum_axis(t: Value, axis: int) -> Value:
+    data = np.sum(t.data, axis=axis, keepdims=True)
+    out = Value(data)
+    out._prev = {t}
+    def _backward():
+        grad = out.grad * np.ones_like(t.data)
+        t.grad = (t.grad if t.grad is not None else np.zeros_like(t.data)) + grad
+    out._backward = _backward
+    return out
 
 def trace(root: Value) -> Tuple[Set[Value], Set[Tuple[Value, Value]]]:
     nodes, edges = set(), set()
