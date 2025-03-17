@@ -27,9 +27,6 @@ class Layer:
         wt = self.W.T
         return self.activation(x.matmul(wt) + self.b)
 
-
-
-    
 if __name__ == "__main__" :
     from Value import *
     from activation import *
@@ -37,7 +34,7 @@ if __name__ == "__main__" :
     from loss import *
     layer = Layer(3,4,activation = linear, weight_init = he_init)
     W, b= layer.parameters()
-    x = Value([0.5,-0.2,0.8])
+    x = Value([[0.5,0.2,0.4],[0.5,-0.2,0.8]])
     output = layer(x)
     loss = bce_loss(output, Value([0,1,0,1]))
     loss.backward()

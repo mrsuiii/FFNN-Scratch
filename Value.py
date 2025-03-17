@@ -60,7 +60,7 @@ class Value:
             # Untuk operand kedua (misalnya, W.T), gunakan outer product agar hasilnya sesuai.
             # Misal, jika self.data.shape = (3,) dan out.grad.shape = (4,), maka
             # np.outer(self.data, out.grad) menghasilkan array dengan shape (3, 4)
-            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + np.outer(self.data, out.grad)
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data.T.dot(out.grad)
             print("setelah matmul",self.grad, other.grad)
         
         out._backward = _backward
