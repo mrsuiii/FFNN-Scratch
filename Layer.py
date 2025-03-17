@@ -1,6 +1,6 @@
 from activation import linear
 from init import *
-from numpy import np
+import numpy as np
 from Value import Value
 from typing import List, Optional, Dict, Callable
 class Layer:
@@ -21,22 +21,34 @@ class Layer:
         self.W = Value(data=weight_init(n_inputs, n_neurons, **weight_init_kwargs))
         # Inisialisasi bias sebagai vektor nol dengan panjang n_neurons
         self.b = Value(data=np.zeros(n_neurons))
-    def __call__(self, x):
-        return [neuron(x) for neuron in self.neurons]
+    def parameters(self) -> List[Value]:
+        return [self.W, self.b]
+    def __call__(self, x: Value) -> Value:
+        wt = self.W.T
+        return self.activation(x.matmul(wt) + self.b)
 
-    def forward(self,x : Value) -> Value:
-        
-        return x.matmul(self.W.T) + self.b
+
 
     
 if __name__ == "__main__" :
-    from Value import Value
-    from activation import linear
-    from init import uniform_init
-
-    layer = Layer(3, 4, activation=linear, weight_init=uniform_init)
-    x = [Value(0.5), Value(-0.2), Value(0.8)]
-
+    from Value import *
+    from activation import *
+    from init import *
+    from loss import *
+    layer = Layer(3,4,activation = linear, weight_init = he_init)
+    W, b= layer.parameters()
+    x = Value([0.5,-0.2,0.8])
     output = layer(x)
+    loss = bce_loss(output, Value([0,1,0,1]))
+    loss.backward()
+    
+    print("loss grad", loss.grad)
+    print("activation grad", output.grad)
+    print("Layer output:", output.data)
+    print("Layer dW:", layer.W.grad)
+    # layer = Layer(3, 4, activation=linear, weight_init=uniform_init)
+    # x = [Value(0.5), Value(-0.2), Value(0.8)]
 
-    print("Layer output:", output)
+    # output = layer(x)
+
+    # print("Layer output:", output)

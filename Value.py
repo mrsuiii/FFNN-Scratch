@@ -2,6 +2,12 @@ from typing import Callable, Union, Tuple, Set
 from graphviz import Digraph
 import numpy as np
 class Value:
+    def __init__(self, data :np.ndarray|list):
+        self.data = np.array(data, dtype=np.float32)
+        self.grad = None
+        self._backward = lambda: None
+        self._prev = set()
+
     def backward(self, grad=None):
         if grad is None:
             grad = np.ones_like(self.data)
@@ -17,6 +23,8 @@ class Value:
                     build_topo(child)
                 topo.append(t)
         build_topo(self)
+        # for t in reversed(topo):
+        #     print(t.data)
         for t in reversed(topo):
             t._backward()
 
@@ -43,13 +51,21 @@ class Value:
         return out
 
     def matmul(self, other):
+        print("sebelum matmul",self.grad)
         out = Value(self.data.dot(other.data))
         out._prev = {self, other}
         def _backward():
+            # Untuk operand pertama (misalnya, x), bentuknya sudah benar:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.dot(other.data.T)
-            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data.T.dot(out.grad)
+            # Untuk operand kedua (misalnya, W.T), gunakan outer product agar hasilnya sesuai.
+            # Misal, jika self.data.shape = (3,) dan out.grad.shape = (4,), maka
+            # np.outer(self.data, out.grad) menghasilkan array dengan shape (3, 4)
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + np.outer(self.data, out.grad)
+            print("setelah matmul",self.grad, other.grad)
+        
         out._backward = _backward
         return out
+
 
     def relu(self):
         out = Value(np.maximum(0, self.data))
@@ -62,10 +78,11 @@ class Value:
 
     def log(self):
         """Logaritma natural dari Value dengan pencatatan gradien."""
-        out = Value(np.log(self.data))
+        eps = 1e-7  # epsilon kecil untuk mencegah log(0) atau log negatif
+        out = Value(np.log(np.maximum(self.data, eps)))
         out._prev = {self}
         def _backward():
-            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + (1 / self.data) * out.grad
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + (1 / np.maximum(self.data, eps)) * out.grad
         out._backward = _backward
         return out
 
@@ -73,7 +90,7 @@ class Value:
         return self * (-1)
     def transpose(self):
         """Mengembalikan Value dengan data yang telah di-transpose."""
-        out = Value(self.data.T, label=f"({self.label}^T)", _op="T")
+        out = Value(self.data.T)
         out._prev = {self}
         def _backward():
             # Gradien dari operasi transpose juga harus di-transpose kembali
