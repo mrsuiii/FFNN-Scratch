@@ -19,15 +19,20 @@ def linear(x:Value):
     return x
 
 def tanh(x: Value):
-    e2x = exp(x * 2)
-    t : Value = (e2x - 1) / (e2x + 1)
-    out = Value(t.data)
+    e2x = np.exp(2 * x.data)
+    t = (e2x - 1) / (e2x + 1)
+    out = Value(t)
+
     out._prev = {x}
+
     def backward():
+        if x.grad is None:
+            x.grad = 0
         x.grad += (1 - out.data ** 2) * out.grad
 
     out._backward = backward
     return out
+
 
 def relu(x: Value):
     t = max(0, x.data)
