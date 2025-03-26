@@ -8,6 +8,8 @@ class Value:
         self.grad = None
         self._backward = lambda: None
         self._prev = set()
+        self.label = None
+        self._op = None
 
     def __repr__(self) :
         return str(self.data)
@@ -44,6 +46,7 @@ class Value:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad
             other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + out.grad
         out._backward = _backward
+        out._op = '+'
         return out
 
     def __sub__(self, other):
@@ -58,6 +61,7 @@ class Value:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + other.data * out.grad
             other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data * out.grad
         out._backward = _backward
+        out._op = '*'
         return out
 
     def matmul(self, other):
@@ -67,6 +71,7 @@ class Value:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.dot(other.data.T)
             other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data.T.dot(out.grad)
         out._backward = _backward
+        out._op = 'matmul'
         return out
 
     def relu(self):
@@ -76,6 +81,7 @@ class Value:
             grad = (self.data > 0).astype(np.float32)
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad * out.grad
         out._backward = _backward
+        out._op = "relu"
         return out
 
     def log(self):
@@ -85,6 +91,7 @@ class Value:
         def _backward():
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + (1 / np.maximum(self.data, eps)) * out.grad
         out._backward = _backward
+        out._op = 'log'
         return out
 
     def __neg__(self):
@@ -96,6 +103,7 @@ class Value:
         def _backward():
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.T
         out._backward = _backward
+        out._op = 'transpose'
         return out
 
     @property
@@ -110,6 +118,7 @@ def mean(t: Value) -> Value:
         grad = np.ones_like(t.data) * (1 / t.data.size) * out.grad
         t.grad = (t.grad if t.grad is not None else np.zeros_like(t.data)) + grad
     out._backward = _backward
+    out._op = 'mean'
     return out
 
 # Fungsi sum sepanjang axis tertentu (misalnya axis=1 untuk CCE)
@@ -121,6 +130,7 @@ def sum_axis(t: Value, axis: int) -> Value:
         grad = out.grad * np.ones_like(t.data)
         t.grad = (t.grad if t.grad is not None else np.zeros_like(t.data)) + grad
     out._backward = _backward
+    out._op = 'sum_axis'
     return out
 
 def trace(root: Value) -> Tuple[Set[Value], Set[Tuple[Value, Value]]]:
@@ -136,19 +146,58 @@ def trace(root: Value) -> Tuple[Set[Value], Set[Tuple[Value, Value]]]:
     build(root)
     return nodes, edges
 
-
 def draw_dot(root: Value) -> Digraph:
     dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'})
-
     nodes, edges = trace(root)
+
     for n in nodes:
-        uid = str(id(n))
-        dot.node(name=uid, label=f"data {str(n.data)} | grad {str(n.grad)}", shape='record')
-        # if n._op:
-        #     dot.node(name=uid + n._op, label=n._op)
-        #     dot.edge(uid + n._op, uid)
+        name = str(id(n))
+        label = n.label if hasattr(n, "label") and n.label else "const " + n.__repr__()  
+        dot.node(name, label=f"{label} | data {str(n.data)} | grad {str(n.grad)}", shape='record')
+        if hasattr(n, '_op') and n._op:  
+            op_name = name + n._op  
+            dot.node(op_name, label=n._op, shape='circle')
+            dot.edge(op_name, name)  
 
     for n1, n2 in edges:
-        dot.edge(str(id(n1)), str(id(n2)))
+        name1 = str(id(n1))
+        name2 = str(id(n2))
+        if hasattr(n2, '_op') and n2._op:
+            op_name = name2 + n2._op  
+            dot.edge(name1, op_name)  
+        else:
+            dot.edge(name1, name2)  
 
     return dot
+
+if __name__ == "__main__":
+    np.random.seed(42)
+
+    A = Value(np.random.randn(3, 3))
+    B = Value(np.random.randn(3, 3))
+    A.label = 'A'
+    B.label = 'B'
+
+    C = A.matmul(B)
+    C.label = 'C = A @ B'
+
+    D = C + Value(np.ones_like(C.data) * 2)
+    D.label = 'D = C + 2'
+
+    E = D.relu()
+    E.label = 'E = ReLU(D)'
+
+    F = E.log()
+    F.label = 'F = log(E)'
+
+    G = mean(F)
+    G.label = 'G = mean(F)'
+
+    H = sum_axis(F, axis=1)
+    H.label = 'H = sum_axis(F, axis=1)'
+
+    G.backward()
+
+    dot = draw_dot(G)
+    dot.render("computation_graph", format="png", cleanup=True)
+
