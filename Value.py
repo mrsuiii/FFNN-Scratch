@@ -1,19 +1,23 @@
 from typing import Callable, Union, Tuple, Set
 from graphviz import Digraph
 import numpy as np
+
 class Value:
-    def __init__(self, data :np.ndarray|list):
+    def __init__(self, data: np.ndarray | list):
         self.data = np.array(data, dtype=np.float32)
         self.grad = None
         self._backward = lambda: None
         self._prev = set()
+
+    def __repr__(self) :
+        return str(self.data)
 
     def backward(self, grad=None):
         if grad is None:
             grad = np.ones_like(self.data)
         self.grad = grad if self.grad is None else self.grad + grad
 
-        # Topological sort untuk menentukan urutan backward yang benar
+        # Topological sort to determine correct backward order
         topo = []
         visited = set()
         def build_topo(t):
@@ -23,10 +27,13 @@ class Value:
                     build_topo(child)
                 topo.append(t)
         build_topo(self)
-        # for t in reversed(topo):
-        #     print(t.data)
+
         for t in reversed(topo):
             t._backward()
+
+    def zero_grad(self):
+        """Reset gradients to zero."""
+        self.grad = np.zeros_like(self.data)
 
     def __add__(self, other):
         if not isinstance(other, Value):
@@ -38,6 +45,9 @@ class Value:
             other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + out.grad
         out._backward = _backward
         return out
+
+    def __sub__(self, other):
+        return self.__add__(-other)
 
     def __mul__(self, other):
         if not isinstance(other, Value):
@@ -51,21 +61,13 @@ class Value:
         return out
 
     def matmul(self, other):
-        print("sebelum matmul",self.grad)
         out = Value(self.data.dot(other.data))
         out._prev = {self, other}
         def _backward():
-            # Untuk operand pertama (misalnya, x), bentuknya sudah benar:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.dot(other.data.T)
-            # Untuk operand kedua (misalnya, W.T), gunakan outer product agar hasilnya sesuai.
-            # Misal, jika self.data.shape = (3,) dan out.grad.shape = (4,), maka
-            # np.outer(self.data, out.grad) menghasilkan array dengan shape (3, 4)
             other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data.T.dot(out.grad)
-            print("setelah matmul",self.grad, other.grad)
-        
         out._backward = _backward
         return out
-
 
     def relu(self):
         out = Value(np.maximum(0, self.data))
@@ -77,8 +79,7 @@ class Value:
         return out
 
     def log(self):
-        """Logaritma natural dari Value dengan pencatatan gradien."""
-        eps = 1e-7  # epsilon kecil untuk mencegah log(0) atau log negatif
+        eps = 1e-7
         out = Value(np.log(np.maximum(self.data, eps)))
         out._prev = {self}
         def _backward():
@@ -88,12 +89,11 @@ class Value:
 
     def __neg__(self):
         return self * (-1)
+
     def transpose(self):
-        """Mengembalikan Value dengan data yang telah di-transpose."""
         out = Value(self.data.T)
         out._prev = {self}
         def _backward():
-            # Gradien dari operasi transpose juga harus di-transpose kembali
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.T
         out._backward = _backward
         return out
@@ -101,6 +101,7 @@ class Value:
     @property
     def T(self):
         return self.transpose()
+
 def mean(t: Value) -> Value:
     data = np.mean(t.data)
     out = Value(data)
@@ -142,12 +143,12 @@ def draw_dot(root: Value) -> Digraph:
     nodes, edges = trace(root)
     for n in nodes:
         uid = str(id(n))
-        dot.node(name=uid, label=f"{n.label} | data {n.data:.4f} | grad {n.grad:.4f}", shape='record')
-        if n._op:
-            dot.node(name=uid + n._op, label=n._op)
-            dot.edge(uid + n._op, uid)
+        dot.node(name=uid, label=f"data {str(n.data)} | grad {str(n.grad)}", shape='record')
+        # if n._op:
+        #     dot.node(name=uid + n._op, label=n._op)
+        #     dot.edge(uid + n._op, uid)
 
     for n1, n2 in edges:
-        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
+        dot.edge(str(id(n1)), str(id(n2)))
 
     return dot
