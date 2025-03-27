@@ -3,7 +3,6 @@ import numpy as np
 from typing import List, Callable
 from Value import Value
 
-
 """
     Initiation functions for the weights in the neural network.
     Initialize weights for a layer with dimensions W : [n_outputs x n_inputs]
@@ -27,8 +26,6 @@ def normal_init(n_inputs,n_outputs,mean=0.0, variance=1.0, seed=None):
 
 def he_init(n_inputs,n_outputs):
     return np.sqrt(2.0 / n_inputs) * rd.randn(n_outputs, n_inputs)
-
-
 
 if __name__ == "__main__":
     print("Zero Init")

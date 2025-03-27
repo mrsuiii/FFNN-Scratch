@@ -63,6 +63,27 @@ class Value:
         out._backward = _backward
         out._op = '*'
         return out
+    
+    def reciprocal(self):
+        out = Value(1.0 / self.data)
+        out._prev = {self}
+        
+        def _backward():
+            grad_input = -out.data * out.data * out.grad
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad_input
+
+        out._backward = _backward
+        out._op = 'reciprocal'
+        return out
+    
+    def __truediv__(self, other):
+        if not isinstance(other, Value):
+            other = Value(other)
+
+        return self * other.reciprocal()
+
+    def __rtruediv__(self, other):
+        return Value(other) * self.reciprocal()
 
     def matmul(self, other):
         out = Value(self.data.dot(other.data))

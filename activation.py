@@ -1,13 +1,18 @@
 from Value import Value
 import numpy as np
-def exp(x : Value):
+
+def exp(x: Value):
     t = np.exp(x.data)
     out = Value(t)
     out._prev = {x}
-    def backward():
-        x.grad += out.data * out.grad
+    
+    def _backward():
+        if x.grad is None:
+            x.grad = np.zeros_like(x.data)
+        x.grad += t * out.grad
 
-    out._backward = backward
+    out._backward = _backward
+    out._op = 'exp'
     return out
 
 def linear(x:Value):
@@ -19,20 +24,9 @@ def linear(x:Value):
     return x
 
 def tanh(x: Value):
-    e2x = np.exp(2 * x.data)
-    t = (e2x - 1) / (e2x + 1)
-    out = Value(t)
-
-    out._prev = {x}
-
-    def backward():
-        if x.grad is None:
-            x.grad = 0
-        x.grad += (1 - out.data ** 2) * out.grad
-
-    out._backward = backward
-    return out
-
+    exp_x = exp(x)
+    exp_neg_x = 1 / exp_x
+    return (exp_x - exp_neg_x) / (exp_x + exp_neg_x)
 
 def relu(x: Value):
     t = max(0, x.data)
@@ -68,7 +62,6 @@ if __name__ == "__main__":
     b = Value(0.3, )
 
     z = (w1 * x1) + (w2 * x2) + b
-    z
 
     y_tanh = tanh(z)
     y_tanh
