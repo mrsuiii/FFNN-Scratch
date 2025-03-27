@@ -10,7 +10,12 @@ class Value:
         self._prev = set()
         self.label = None
         self._op = None
-
+    def __getitem__(self, idx):
+        # Pastikan hasil slicing selalu 2D
+        sliced = self.data[idx]
+        if sliced.ndim == 1:
+            sliced = np.atleast_2d(sliced)
+        return Value(sliced)
     def __repr__(self) :
         return str(self.data)
 
@@ -57,6 +62,20 @@ class Value:
     
     def __rsub__(self, other) :
         return (-self) + other
+    
+    def unbroadcast(self, grad, shape):
+        """
+        Reduces grad sehingga memiliki bentuk yang sama dengan `shape`.
+        Fungsi ini melakukan penjumlahan (sum) pada axis yang tidak sesuai.
+        """
+        # Jika grad memiliki dimensi lebih dari shape yang diinginkan, jumlahkan sumbu ekstra
+        while grad.ndim > len(shape):
+            grad = grad.sum(axis=0)
+        # Periksa tiap axis, jika tidak sesuai, jumlahkan pada axis tersebut
+        for i, dim in enumerate(shape):
+            if grad.shape[i] != dim:
+                grad = grad.sum(axis=i, keepdims=True)
+        return grad
 
     def __mul__(self, other):
         if not isinstance(other, Value):
@@ -64,11 +83,20 @@ class Value:
         out = Value(self.data * other.data)
         out._prev = {self, other}
         def _backward():
-            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + other.data * out.grad
-            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + self.data * out.grad
+            # Hitung gradien dasar untuk masing-masing operand
+            grad_self = other.data * out.grad
+            grad_other = self.data * out.grad
+            
+            # Unbroadcast gradien sesuai dengan shape asli dari self.data dan other.data
+            grad_self = self.unbroadcast(grad_self, self.data.shape)
+            grad_other = self.unbroadcast(grad_other, other.data.shape)
+            
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad_self
+            other.grad = (other.grad if other.grad is not None else np.zeros_like(other.data)) + grad_other
         out._backward = _backward
         out._op = '*'
         return out
+
     
     def reciprocal(self):
         out = Value(1.0 / self.data)
@@ -105,7 +133,8 @@ class Value:
         out._backward = _backward
         out._op = '>'
         return out
-
+    def __len__(self):
+        return len(self.data)
     def matmul(self, other):
         out = Value(self.data.dot(other.data))
         out._prev = {self, other}

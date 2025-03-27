@@ -20,13 +20,13 @@ class Layer:
         self.rmsnorm = rmsnorm
         self.eps = eps
         if self.rmsnorm:
-            self.gamma = Value(np.random.randn((1, n_neurons)))  
+            self.gamma = Value(np.random.randn(1, n_neurons))  
         else:
             self.gamma = None
     def parameters(self) -> List[Value]:
         return [self.W, self.b]
 
-    def rmsnorm(self, x: Value) -> Value:
+    def rmsnorm_func(self, x: Value) -> Value:
         ms = Value(np.mean(x.data ** 2, axis=1, keepdims=True))
         rms = Value(np.sqrt(ms.data + self.eps))
         normed = x / rms
@@ -37,5 +37,5 @@ class Layer:
     def __call__(self, x: Value) -> Value:
         z = x.matmul(self.W.T) + self.b
         if self.rmsnorm:
-            z = self.rmsnorm(z)
+            z = self.rmsnorm_func(z)
         return self.activation(z)
