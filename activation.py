@@ -16,11 +16,6 @@ def exp(x: Value):
     return out
 
 def linear(x:Value):
-    out = Value(x.data)
-    out._prev = {x}
-    def backward() :
-        x.grad += out.grad
-    out._backward = backward
     return x
 
 def tanh(x: Value):
@@ -29,26 +24,10 @@ def tanh(x: Value):
     return (exp_x - exp_neg_x) / (exp_x + exp_neg_x)
 
 def relu(x: Value):
-    t = max(0, x.data)
-    out = Value(t, )
-    out._prev = {x}
-    def backward():
-        x.grad += (1.0 if x.data > 0 else 0.0) * out.grad
-
-    out._backward = backward
-    return out
+    return x * (x.data > 0)
 
 def sigmoid(x: Value):
-    t = 1 / (1 + np.exp(-x.data))
-    out = Value(t, )
-    out._prev = {x}
-    def backward():
-        if x.grad is None:
-            x.grad = np.zeros_like(x.data)
-        x.grad += (t * (1 - t)) * out.grad
-
-    out._backward = backward
-    return out
+    return 1 / (1 + exp(-x))
 
 if __name__ == "__main__":
     from Value import draw_dot
@@ -66,7 +45,7 @@ if __name__ == "__main__":
     y_tanh = tanh(z)
     y_tanh
 
-    y_tanh.back()
+    y_tanh.backward()
 
     dot_tanh = draw_dot(y_tanh)
 

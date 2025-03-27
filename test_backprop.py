@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from Value import Value
-from activation import tanh, sigmoid
+from activation import tanh, sigmoid, relu
 from init import he_init
 from loss import bce_loss
 from FFNN import FFNN
 
 # ---- Custom FFNN ----
 layer_sizes = [4, 8, 8, 2]
-activations = [tanh, tanh, sigmoid]
+activations = [relu, tanh, sigmoid]
 
 ffnn = FFNN(layer_sizes, activations, weight_init=he_init, learning_rate=0.1)
 
@@ -35,7 +35,7 @@ torch.manual_seed(42)
 
 torch_ffnn = nn.Sequential(
     nn.Linear(4, 8),
-    nn.Tanh(),
+    nn.ReLU(),
     nn.Linear(8, 8),
     nn.Tanh(),
     nn.Linear(8, 2),

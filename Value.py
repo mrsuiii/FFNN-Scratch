@@ -48,9 +48,15 @@ class Value:
         out._backward = _backward
         out._op = '+'
         return out
+    
+    def __radd__(self, other) :
+        return self + other
 
     def __sub__(self, other):
         return self.__add__(-other)
+    
+    def __rsub__(self, other) :
+        return (-self) + other
 
     def __mul__(self, other):
         if not isinstance(other, Value):
@@ -84,6 +90,21 @@ class Value:
 
     def __rtruediv__(self, other):
         return Value(other) * self.reciprocal()
+    
+    def __gt__(self, other):
+        
+        if not isinstance(other, Value):
+            other = Value(other)
+        
+        out = Value(np.where(self.data > other.data, 1.0, 0.0))
+        out._prev = {self, other}
+        
+        def _backward():
+            pass
+        
+        out._backward = _backward
+        out._op = '>'
+        return out
 
     def matmul(self, other):
         out = Value(self.data.dot(other.data))
