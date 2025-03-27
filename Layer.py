@@ -29,7 +29,10 @@ class Layer:
     def rmsnorm(self, x: Value) -> Value:
         ms = Value(np.mean(x.data ** 2, axis=1, keepdims=True))
         rms = Value(np.sqrt(ms.data + self.eps))
-        return x / rms
+        normed = x / rms
+        if self.gamma is not None:
+            normed = normed * self.gamma
+        return normed
 
     def __call__(self, x: Value) -> Value:
         z = x.matmul(self.W.T) + self.b
