@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from Value import Value
-from activation import tanh, sigmoid
+from activation import tanh, sigmoid, relu
 from init import he_init
 from loss import bce_loss
 from FFNN import FFNN
@@ -80,7 +80,7 @@ def main():
     X_value, y_value = convert_to_value(X, y)
 
     layer_sizes = [4, 8, 8, 2]
-    activations = [tanh, tanh, sigmoid]
+    activations = [tanh, relu, sigmoid]
     
     ffnn = FFNN(
         layer_sizes, 
@@ -94,7 +94,7 @@ def main():
         nn.Linear(4, 8),
         nn.Tanh(),
         nn.Linear(8, 8),
-        nn.Tanh(),
+        nn.ReLU(),
         nn.Linear(8, 2),
         nn.Sigmoid()
     )

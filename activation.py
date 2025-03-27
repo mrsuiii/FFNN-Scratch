@@ -26,8 +26,40 @@ def tanh(x: Value):
 def relu(x: Value):
     return x * (x.data > 0)
 
+def leaky_relu(x: Value, alpha=0.01):
+    out = x * (x.data > 0) + alpha * x * (x.data <= 0)
+    return out
+
+def swish(x: Value):
+    return x * sigmoid(x)
+
 def sigmoid(x: Value):
     return 1 / (1 + exp(-x))
+
+def softmax(x: Value):
+    max_x = Value(np.max(x.data, axis=1, keepdims=True))
+    exp_x = exp(x - max_x)
+    sum_exp = Value(np.sum(exp_x.data, axis=1, keepdims=True))
+    out = exp_x / sum_exp
+    
+    out._prev = {x}
+    
+    def _backward():
+        # Compute softmax Jacobian-vector product
+        if x.grad is None:
+            x.grad = np.zeros_like(x.data)
+        
+        # Gradient computation for softmax
+        # s * (δ_ij - s_j)
+        # out.data is the softmax probabilities
+        # out.grad is the incoming gradient
+        grad = out.data * (out.grad - np.sum(out.data * out.grad, axis=1, keepdims=True))
+        
+        x.grad += grad
+
+    out._backward = _backward
+    out._op = 'softmax'
+    return out
 
 if __name__ == "__main__":
     from Value import draw_dot
