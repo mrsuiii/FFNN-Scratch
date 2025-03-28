@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from Value import Value
-from activation import tanh, sigmoid
-from init import he_init
-from loss import bce_loss
-from FFNN import FFNN
+from src.Value import Value
+from src.activation import tanh, sigmoid
+from src.init import he_init
+from src.loss import bce_loss
+from src.FFNN import FFNN
 
 # ---- Custom FFNN ----
 layer_sizes = [4, 8, 8, 2]

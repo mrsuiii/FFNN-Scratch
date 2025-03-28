@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-from Value import Value
-from activation import softmax
+from src.Value import Value
+from src.activation import softmax
 
 def test_softmax_implementation():
     # Set random seed for reproducibility

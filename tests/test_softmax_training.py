@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
-from Value import Value
-from activation import softmax, linear, relu
-from init import he_init
-from loss import cce_loss  # Categorical Cross Entropy for softmax
-from FFNN import FFNN
+from src.Value import Value
+from src.activation import softmax, linear, relu
+from src.init import he_init
+from src.loss import cce_loss  # Categorical Cross Entropy for softmax
+from src.FFNN import FFNN
 
 def generate_multiclass_data(num_samples=100, num_features=4, num_classes=3):
     """

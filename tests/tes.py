@@ -1,11 +1,11 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from Value import Value
-from loss import bce_loss
-from activation import sigmoid
-from init import he_init
-from Layer import Layer
+from src.Value import Value
+from src.loss import bce_loss
+from src.activation import sigmoid
+from src.init import he_init
+from src.Layer import Layer
 
 def compare_layer_gradients():
     # Define input and target

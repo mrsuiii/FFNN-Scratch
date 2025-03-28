@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-from Value import Value
-from activation import softmax
-from loss import cce_loss  # Assuming cce_loss is in a file named loss.py
+from src.Value import Value
+from src.activation import softmax
+from src.loss import cce_loss  # Assuming cce_loss is in a file named loss.py
 
 def test_cce_loss_implementation():
     # Set random seed for reproducibility
