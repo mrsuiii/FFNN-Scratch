@@ -169,6 +169,18 @@ class Value:
         out._op = 'log'
         return out
 
+    def sqrt(self):
+        out = Value(np.sqrt(self.data))
+        out._prev = {self}
+        
+        def _backward():
+            grad_input = (0.5 / out.data) * out.grad
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad_input
+
+        out._backward = _backward
+        out._op = 'sqrt'
+        return out
+
     def __neg__(self):
         return self * (-1)
 

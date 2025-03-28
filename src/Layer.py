@@ -27,8 +27,8 @@ class Layer:
         return [self.W, self.b]
 
     def rmsnorm_func(self, x: Value) -> Value:
-        ms = Value(np.mean(x.data ** 2, axis=1, keepdims=True))
-        rms = Value(np.sqrt(ms.data + self.eps))
+        ms = (x * x).sum(axis=1, keepdims=True) / x.data.shape[1]
+        rms = (ms + self.eps).sqrt()
         normed = x / rms
         if self.gamma is not None:
             normed = normed * self.gamma
