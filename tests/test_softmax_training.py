@@ -37,7 +37,7 @@ def main():
 
     # Custom FFNN configuration with softmax
     layer_sizes = [4, 8, 3]  # 4 features, 8 hidden units, 3 classes
-    activations = [relu, softmax]  # Final layer with softmax
+    activations = [relu, softmax]  # Final layer with softmaxz
 
     # Create custom FFNN
     ffnn = FFNN(

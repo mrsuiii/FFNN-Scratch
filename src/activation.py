@@ -27,7 +27,7 @@ def relu(x: Value):
     return x * (x.data > 0)
 
 def leaky_relu(x: Value, alpha=0.01):
-    out = x * (x.data > 0) + alpha * x * (x.data <= 0)
+    out = x * (x.data > 0) + Value(alpha) * x * (x.data <= 0)
     return out
 
 def swish(x: Value):

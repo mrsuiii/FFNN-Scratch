@@ -96,7 +96,9 @@ class Value:
         out._backward = _backward
         out._op = '*'
         return out
-
+    
+    def __rmul__(self, other) :
+        return self.__mul__(other)
     
     def reciprocal(self):
         out = Value(1.0 / self.data)

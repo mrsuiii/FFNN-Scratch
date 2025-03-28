@@ -15,10 +15,14 @@ def normal_init(n_inputs, n_outputs, mean=0.0, variance=1.0, seed=None):
     std_dev = np.sqrt(variance)
     return rd.normal(mean, std_dev, (n_outputs, n_inputs))
 
-def he_init(n_inputs, n_outputs):
+def he_init(n_inputs, n_outputs, seed = None):
+    if seed is not None:
+        rd.seed(seed)
     return np.sqrt(2.0 / n_inputs) * rd.randn(n_outputs, n_inputs)
 
-def xavier_init(n_inputs, n_outputs):
+def xavier_init(n_inputs, n_outputs, seed = None):
+    if seed is not None:
+        rd.seed(seed)
     limit = np.sqrt(6.0 / (n_inputs + n_outputs))
     return rd.uniform(-limit, limit, (n_outputs, n_inputs))
 
