@@ -1,102 +1,177 @@
-from typing import Tuple, Set
-from graphviz import Digraph
+import dash
+import dash_cytoscape as cyto
+from dash import html
+from dash.dependencies import Input, Output, State
 from FFNN import FFNN
-import numpy as np
 
-def trace_FFNN(ffnn: FFNN) -> Tuple[Set[str], Set[Tuple[str, str, str]]]:
-    nodes, edges = set(), set()
+def trace_FFNN(ffnn: FFNN):
+    nodes, edges = [], []
 
     n_inputs = ffnn.layers[0].W.data.shape[1]
     input_nodes = [f"x{i+1}" for i in range(n_inputs)]
-    nodes.update(input_nodes)
 
+    y_offset = 0
+    max_nodes_per_layer = max([len(layer.W.data) for layer in ffnn.layers] + [n_inputs])
+    layer_height = max_nodes_per_layer * 150
+
+    layer_start_y = y_offset + (layer_height - n_inputs * 150) / 2
     prev_layer_nodes = input_nodes
+    nodes.extend([{"data": {"id": node, "label": node}, "classes": "input", "position": {"x": 0, "y": i*150 + layer_start_y}} for i, node in enumerate(input_nodes)])
 
+    layer_distance = 100*max_nodes_per_layer
     for layer_idx, layer in enumerate(ffnn.layers):
         n_neurons = layer.W.data.shape[0]
         sum_nodes = [f"S{layer_idx + 1}_N{n_idx + 1}" for n_idx in range(n_neurons)]
         act_nodes = [f"A{layer_idx + 1}_N{n_idx + 1}" for n_idx in range(n_neurons)]
-        nodes.update(sum_nodes)
-        nodes.update(act_nodes)
+
+        layer_start_y = y_offset + (layer_height - n_neurons * 150) / 2  # Center vertically
+
+        nodes.extend([{"data": {"id": node, "label": node}, "classes": "sum", "position": {"x": (layer_idx + 1) * layer_distance, "y": i * 150 + layer_start_y}} for i, node in enumerate(sum_nodes)])
+        nodes.extend([{"data": {"id": node, "label": node}, "classes": "activation", "position": {"x": (layer_idx + 1) * layer_distance + 150, "y": i * 150 + layer_start_y}} for i, node in enumerate(act_nodes)])
 
         for neuron_idx in range(n_neurons):
             for prev_idx, prev_node in enumerate(prev_layer_nodes):
                 weight_value = layer.W.data[neuron_idx, prev_idx]
-                weight_label = f"w[{layer_idx + 1}][{prev_idx+1}][{neuron_idx+1}] = {weight_value:.2f}"
-                edges.add((prev_node, sum_nodes[neuron_idx], weight_label))
+                weight_grad = layer.W.grad
+                label_extension = f"\ndw={weight_grad[neuron_idx, prev_idx]}" if weight_grad else ""
+                edges.append({
+                    "data": {"id": f"{prev_node}-{sum_nodes[neuron_idx]}", "source": prev_node, "target": sum_nodes[neuron_idx], "weight": f"w={weight_value:.2f}{label_extension}"},
+                    "classes": "hidden-label"
+                })
 
             bias_value = layer.b.data[neuron_idx]
+            bias_grad = layer.b.grad
+            label_extension = f"\ndb={bias_grad[neuron_idx]}" if bias_grad else ""
             bias_node = f"b{layer_idx}_N{neuron_idx}"
-            nodes.add(bias_node)
-            edges.add((bias_node, sum_nodes[neuron_idx], f"b[{neuron_idx+1}] = {bias_value:.2f}"))
+            nodes.append({"data": {"id": bias_node, "label": bias_node}, "classes": "bias", "position": {"x": (layer_idx + 1) * layer_distance - (layer_distance)//2, "y": neuron_idx * 150 + layer_start_y}})
+            edges.append({
+                "data": {"id": f"{bias_node}-{sum_nodes[neuron_idx]}", "source": bias_node, "target": sum_nodes[neuron_idx], "weight": f"b={bias_value:.2f}{label_extension}"},
+                "classes": "hidden-label"
+            })
 
-            edges.add((sum_nodes[neuron_idx], act_nodes[neuron_idx], f"{layer.activation.__name__}"))
+            edges.append({
+                "data": {"id": f"{sum_nodes[neuron_idx]}-{act_nodes[neuron_idx]}", "source": sum_nodes[neuron_idx], "target": act_nodes[neuron_idx], "weight": layer.activation.__name__},
+                "classes": "hidden-label"
+            })
 
         prev_layer_nodes = act_nodes
-
+    
     output_nodes = [f"y{i+1}" for i in range(len(prev_layer_nodes))]
-    nodes.update(output_nodes)
+    layer_start_y = y_offset + (layer_height - len(prev_layer_nodes) * 150) / 2
+    nodes.extend([{"data": {"id": node, "label": node}, "classes": "output", "position": {"x": (len(ffnn.layers) + 1) * layer_distance, "y": i * 150 + layer_start_y}} for i, node in enumerate(output_nodes)])
 
     for prev_node, out_node in zip(prev_layer_nodes, output_nodes):
-        edges.add((prev_node, out_node, ""))
+        edges.append({
+            "data": {"id": f"{prev_node}-{out_node}", "source": prev_node, "target": out_node, "weight": ""},
+            "classes": "hidden-label"
+        })
 
     return nodes, edges
 
-def draw_FFNN(ffnn: FFNN) -> Digraph:
-    dot = Digraph(format='svg', graph_attr={
-        'rankdir': 'LR',
-        'splines': 'polyline',
-        'nodesep': '1.0',
-        'ranksep': '1.5'
-    })
+from activation import sigmoid, tanh
+from init import he_init
+from Layer import Layer
 
-    nodes, edges = trace_FFNN(ffnn)
+layers = [
+    Layer(3, 4, sigmoid, he_init),
+    Layer(4, 3, sigmoid, he_init),
+    Layer(3, 7, tanh, he_init)
+]
 
-    for node in nodes:
-        if node.startswith("x") or node.startswith("y"):
-            shape = "circle"
-        elif node.startswith("A"):
-            shape = "box"
-        elif node.startswith("S"):
-            shape = "ellipse"
-        elif node.startswith("b"):
-            shape = "diamond"
-        else:
-            shape = "circle"
-        
-        dot.node(name=node, label=node, shape=shape, fontname="monospace")
+ffnn = FFNN(layers=layers, layer_sizes=[3,4,3,7])
 
-    layer_groups, sum_groups, act_groups = {}, {}, {}
+nodes, edges = trace_FFNN(ffnn)
 
-    for node in nodes:
-        if "_" in node:
-            layer_idx = node.split("_")[0][1:]
-            if node.startswith("S"):
-                sum_groups.setdefault(layer_idx, []).append(node)
-            elif node.startswith("A"):
-                act_groups.setdefault(layer_idx, []).append(node)
-            else:
-                layer_groups.setdefault(layer_idx, []).append(node)
+app = dash.Dash(__name__)
 
-    for groups in (sum_groups, act_groups):
-        for layer_idx, layer_nodes in sorted(groups.items(), key=lambda x: int(x[0])):
-            with dot.subgraph() as sub:
-                sub.attr(rank="same")
-                for node in layer_nodes:
-                    sub.node(node)
+app.layout = html.Div([
+    cyto.Cytoscape(
+        id='ffnn-graph',
+        layout={'name': 'preset'},
+        style={'width': '100%', 'height': '800px'},
+        elements=nodes + edges,
+        stylesheet=[
+            {"selector": "node", "style": {
+                "content": "data(label)",
+                "text-valign": "center",
+                "text-halign": "center",
+                "color": "white",
+                "width": "60px",
+                "height": "60px",
+                "font-size": "18px",
+                "border-width": "2px",
+                "border-color": "black"
+            }},
+            {"selector": ".input", "style": {"background-color": "#FFA500"}},
+            {"selector": ".sum", "style": {"background-color": "#2ca02c"}},
+            {"selector": ".activation", "style": {"background-color": "#1f77b4"}},
+            {"selector": ".output", "style": {"background-color": "#FF4500"}},
+            {"selector": ".bias", "style": {"background-color": "#d62728"}},
+            {"selector": "edge", "style": {
+                "curve-style": "bezier",
+                "target-arrow-shape": "triangle",
+                "label": "",
+                "font-size": "0px"
+            }},
+            {"selector": ".show-label", "style":{
+                "label": "data(weight)",
+                "font-size": "14px",
+                "color": "black",
+                "text-background-opacity": 1,
+                "text-background-color": "white",
+                "text-border-opacity": 1,
+                "text-border-width": 1,
+                "text-border-color": "black"
+            }}
+        ]
+    ),
+    html.Div(id='edge-data')
+])
 
-    for n1, n2, label in edges:
-        style = "dashed" if "w[" in label else "solid"
-        dot.edge(n1, n2, label=label, style=style, fontname="monospace",
-                 labeldistance="1.5", labelangle="30", fontsize="10")
+@app.callback(
+    Output('ffnn-graph', 'stylesheet'),
+    Input('ffnn-graph', 'tapEdgeData'),
+    State('ffnn-graph', 'stylesheet')
+)
+def display_edge_data(edge_data, stylesheet):
+    if edge_data:
+        edge_id = edge_data['id']
+        found = False
+        for style in stylesheet:
+            if style['selector'] == f'edge[id = "{edge_id}"]':
+                if 'label' in style['style'] and style['style']['label'] == 'data(weight)':
+                    style['style']['label'] = ''
+                    style['style']['font-size'] = '0px'
+                else:
+                    style['style'] = {
+                        "label": "data(weight)",
+                        "font-size": "14px",
+                        "color": "black",
+                        "text-background-opacity": 1,
+                        "text-background-color": "white",
+                        "text-border-opacity": 1,
+                        "text-border-width": 1,
+                        "text-border-color": "black"
+                    }
+                found = True
+                break
+        if not found:
+            stylesheet.append({
+                "selector": f'edge[id = "{edge_id}"]',
+                "style": {
+                    "label": "data(weight)",
+                    "font-size": "14px",
+                    "color": "black",
+                    "text-background-opacity": 1,
+                    "text-background-color": "white",
+                    "text-border-opacity": 1,
+                    "text-border-width": 1,
+                    "text-border-color": "black"
+                }
+            })
+        return stylesheet
+    else:
+        return stylesheet
 
-    return dot
-
-if __name__ == "__main__":
-    from src.activation import sigmoid
-    from src.init import he_init
-
-    ffnn = FFNN([3, 4, 2], [sigmoid, sigmoid], weight_init=he_init)
-    draw_FFNN(ffnn).render("ffnn_structure")
-
-    print("FFNN structure graph saved as 'ffnn_structure.svg'")
+if __name__ == '__main__':
+    app.run(debug=True)
