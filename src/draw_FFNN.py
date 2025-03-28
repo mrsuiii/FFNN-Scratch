@@ -166,4 +166,4 @@ def test_main() :
     layers = [Layer(3, 4, sigmoid, he_init), Layer(4, 3, sigmoid, he_init), Layer(3, 4, tanh, he_init)]
     ffnn = FFNN(layers=layers, layer_sizes=[3,4,3,4])
     app = visualize_FFNN(ffnn)
-    app.run(mode='inline')
+    # app.run(mode='inline')

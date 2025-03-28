@@ -135,8 +135,10 @@ class Value:
         out._backward = _backward
         out._op = '>'
         return out
+    
     def __len__(self):
         return len(self.data)
+    
     def matmul(self, other):
         out = Value(self.data.dot(other.data))
         out._prev = {self, other}
@@ -177,6 +179,30 @@ class Value:
             self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + out.grad.T
         out._backward = _backward
         out._op = 'transpose'
+        return out
+    
+    def abs(self):
+        out = Value(np.abs(self.data))
+        out._prev = {self}
+        
+        def _backward():
+            grad_input = np.sign(self.data) * out.grad
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad_input
+
+        out._backward = _backward
+        out._op = 'abs'
+        return out
+    
+    def sum(self, axis=None, keepdims=False):
+        out = Value(np.sum(self.data, axis=axis, keepdims=keepdims))
+        out._prev = {self}
+
+        def _backward():
+            grad_input = np.ones_like(self.data) * out.grad
+            self.grad = (self.grad if self.grad is not None else np.zeros_like(self.data)) + grad_input
+
+        out._backward = _backward
+        out._op = 'sum'
         return out
 
     @property

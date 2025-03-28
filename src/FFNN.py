@@ -16,7 +16,8 @@ class FFNN:
         loss_fn: Callable[[Value, Value], Value] = None,
         weight_init: Callable[[int, int], Value] = zero_init,
         lr: float = 0.01,
-       
+        lambda_l1: float = 0.0,
+        lambda_l2: float = 0.0
     ):
         # assert len(activations) == len(layer_sizes) - 1, "Each layer (except input) must have an activation function"
 
@@ -31,6 +32,8 @@ class FFNN:
         ] if layers is None else layers
         self.learning_rate = lr
         self.loss_fn = loss_fn
+        self.lambda_l1 = lambda_l1
+        self.lambda_l2 = lambda_l2
 
     def __call__(self, x: Value) -> Value:
         for layer in self.layers:
@@ -44,7 +47,17 @@ class FFNN:
         return params
 
     def backward(self, loss: Value):
-        loss.backward()
+        L_new = loss
+
+        for layer in self.layers:
+            for param in layer.parameters():
+                if self.lambda_l1 > 0:
+                    L_new += self.lambda_l1 * param.abs().sum()
+
+                if self.lambda_l2 > 0:
+                    L_new += self.lambda_l2 * (param * param).sum()
+
+        L_new.backward()
 
     def update_weights(self):
         for param in self.parameters():
