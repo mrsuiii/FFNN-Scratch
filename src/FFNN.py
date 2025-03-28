@@ -2,6 +2,10 @@ from Layer import Layer
 from typing import List, Callable
 from Value import Value
 from init import zero_init
+from activation import activations_map
+from loss import loss_fn_map
+import numpy as np
+import json
 
 class FFNN:
     def __init__(
@@ -140,3 +144,43 @@ class FFNN:
             loss = self.loss_fn(output, y)
             total_loss += loss.data
         return total_loss / len(validation_data)
+    
+    def save(self, file_path: str):
+        model_data = {
+            "layer_sizes": [layer.W.data.shape[1] for layer in self.layers] + [self.layers[-1].W.data.shape[0]],
+            "weights": [layer.W.data.tolist() for layer in self.layers],
+            "biases": [layer.b.data.tolist() for layer in self.layers],
+            "rmsnorm": [layer.rmsnorm for layer in self.layers],
+            "gamma": [layer.gamma.data.tolist() if layer.rmsnorm else None for layer in self.layers],
+            "activations": [layer.activation.__name__ for layer in self.layers],
+            "loss_fn": self.loss_fn.__name__ if self.loss_fn else None,
+            "learning_rate": self.learning_rate
+        }
+        with open(file_path, "w") as f:
+            json.dump(model_data, f, indent=4)
+
+    @classmethod
+    def load(cls, file_path: str):
+        with open(file_path, "r") as f:
+            model_data = json.load(f)
+
+        layer_sizes = model_data["layer_sizes"]
+        activations = [activations_map[name] for name in model_data["activations"]]
+        loss_fn = loss_fn_map.get(model_data["loss_fn"], None)
+        layers = []
+
+        for i in range(len(layer_sizes) - 1):
+            layer = Layer(
+                n_inputs=layer_sizes[i],
+                n_neurons=layer_sizes[i + 1],
+                activation=activations[i],
+                weight_init=zero_init,
+                rmsnorm=model_data["rmsnorm"][i]
+            )
+            layer.W.data = np.array(model_data["weights"][i])
+            layer.b.data = np.array(model_data["biases"][i])
+            if model_data["rmsnorm"][i]:
+                layer.gamma.data = np.array(model_data["gamma"][i])
+            layers.append(layer)
+
+        return cls(layers=layers, loss_fn=loss_fn, lr=model_data["learning_rate"])

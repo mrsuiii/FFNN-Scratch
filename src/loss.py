@@ -27,3 +27,5 @@ def cce_loss(pred: Value, target: Value) -> Value:
     loss = -(target * pred.log())
     loss_sum = sum_axis(loss, axis=1)  # bentuk (batch, 1)
     return mean(loss_sum)
+
+loss_fn_map = {"mse_loss" : mse_loss, "bce_loss" : bce_loss, "cce_loss" : cce_loss}

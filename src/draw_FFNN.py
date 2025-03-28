@@ -1,7 +1,6 @@
-import dash
+import jupyter_dash
 import dash_cytoscape as cyto
-from dash import html
-from dash.dependencies import Input, Output, State
+from dash import html, Input, Output, State
 from FFNN import FFNN
 
 def visualize_FFNN(ffnn: FFNN):
@@ -33,7 +32,7 @@ def visualize_FFNN(ffnn: FFNN):
             for prev_idx, prev_node in enumerate(prev_layer_nodes):
                 weight_value = layer.W.data[neuron_idx, prev_idx]
                 weight_grad = layer.W.grad
-                label_extension = f"\ndw={weight_grad[neuron_idx, prev_idx]}" if weight_grad else ""
+                label_extension = f"\ndw={weight_grad[neuron_idx, prev_idx]}" if weight_grad != None else ""
                 edges.append({
                     "data": {"id": f"{prev_node}-{sum_nodes[neuron_idx]}", "source": prev_node, "target": sum_nodes[neuron_idx], "weight": f"w={weight_value:.2f}{label_extension}"},
                     "classes": "hidden-label"
@@ -41,7 +40,7 @@ def visualize_FFNN(ffnn: FFNN):
 
             bias_value = layer.b.data[neuron_idx]
             bias_grad = layer.b.grad
-            label_extension = f"\ndb={bias_grad[neuron_idx]}" if bias_grad else ""
+            label_extension = f"\ndb={bias_grad[neuron_idx]}" if bias_grad != None else ""
             bias_node = f"b{layer_idx}_N{neuron_idx}"
             nodes.append({"data": {"id": bias_node, "label": bias_node}, "classes": "bias", "position": {"x": (layer_idx + 1) * layer_distance - (layer_distance) // 2, "y": neuron_idx * 150 + layer_start_y}})
             edges.append({
@@ -66,7 +65,7 @@ def visualize_FFNN(ffnn: FFNN):
             "classes": "hidden-label"
         })
 
-    app = dash.Dash(__name__)
+    app = jupyter_dash.JupyterDash(__name__)  # Changed from dash.Dash
 
     app.layout = html.Div([
         cyto.Cytoscape(
@@ -159,12 +158,12 @@ def visualize_FFNN(ffnn: FFNN):
 
     return app
 
-# Example usage:
-from activation import sigmoid, tanh
-from init import he_init
-from Layer import Layer
-layers = [Layer(3, 4, sigmoid, he_init), Layer(4, 3, sigmoid, he_init), Layer(3, 4, tanh, he_init)]
-ffnn = FFNN(layers=layers, layer_sizes=[3,4,3,4])
-app = visualize_FFNN(ffnn)
-if __name__ == '__main__':
-    app.run(debug=True)
+# Example usage in Jupyter Notebook:
+def test_main() :
+    from activation import sigmoid, tanh
+    from init import he_init
+    from Layer import Layer
+    layers = [Layer(3, 4, sigmoid, he_init), Layer(4, 3, sigmoid, he_init), Layer(3, 4, tanh, he_init)]
+    ffnn = FFNN(layers=layers, layer_sizes=[3,4,3,4])
+    app = visualize_FFNN(ffnn)
+    app.run_server(mode='inline')

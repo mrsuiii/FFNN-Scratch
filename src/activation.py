@@ -61,26 +61,4 @@ def softmax(x: Value):
     out._op = 'softmax'
     return out
 
-if __name__ == "__main__":
-    from src.Value import draw_dot
-    from src.activation import tanh
-
-    x1 = Value(0.5, )
-    x2 = Value(-1.2, )
-
-    w1 = Value(0.8, )
-    w2 = Value(-0.4, )
-    b = Value(0.3, )
-
-    z = (w1 * x1) + (w2 * x2) + b
-
-    y_tanh = tanh(z)
-    y_tanh
-
-    y_tanh.backward()
-
-    dot_tanh = draw_dot(y_tanh)
-
-    dot_tanh.render("tanh_activation")
-
-    print("Computation graph for tanh saved as 'tanh_activation.svg'")
+activations_map = {"linear" : linear, "tanh" : tanh, "relu" : relu, "leaky_relu" : leaky_relu, "sigmoid" : sigmoid, "swish" : swish, "softmax" : softmax}
