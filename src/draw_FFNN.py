@@ -2,6 +2,7 @@ import dash
 import dash_cytoscape as cyto
 from dash import html, Input, Output, State
 from FFNN import FFNN
+import numpy as np
 
 def visualize_FFNN(ffnn: FFNN):
     nodes, edges = [], []
@@ -40,7 +41,7 @@ def visualize_FFNN(ffnn: FFNN):
 
             bias_value = layer.b.data[neuron_idx]
             bias_grad = layer.b.grad
-            label_extension = f"\ndb={bias_grad[neuron_idx]}" if bias_grad is not None else ""
+            label_extension = f"\ndb={np.sum(bias_grad, axis=0)[neuron_idx]}" if bias_grad is not None else ""
             bias_node = f"b{layer_idx}_N{neuron_idx}"
             nodes.append({"data": {"id": bias_node, "label": bias_node}, "classes": "bias", "position": {"x": (layer_idx + 1) * layer_distance - (layer_distance) // 2, "y": neuron_idx * 150 + layer_start_y}})
             edges.append({
