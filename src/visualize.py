@@ -1,15 +1,15 @@
 import matplotlib.pyplot as plt
 from FFNN import FFNN
 
-def plot_training_comparison(training_loss, validation_loss):
+def plot_training_comparison(training_history):
     plt.figure(figsize=(10, 6))
     plt.plot(
-        training_loss['training_loss_history'], 
+        training_history['training_loss_history'], 
         label='Loss on Training Data', 
         color='blue'
     )
     plt.plot(
-        validation_loss['training_loss_history'], 
+        training_history['validation_loss_history'], 
         label='Loss on Validation Data', 
         color='red', 
         linestyle='--'
