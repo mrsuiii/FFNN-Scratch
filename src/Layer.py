@@ -24,7 +24,10 @@ class Layer:
         else:
             self.gamma = None
     def parameters(self) -> List[Value]:
-        return [self.W, self.b]
+        param = [self.W, self.b]
+        if self.gamma is not None:
+            param.append(self.gamma)
+        return param
 
     def rmsnorm_func(self, x: Value) -> Value:
         ms = (x * x).sum(axis=1, keepdims=True) / x.data.shape[1]
