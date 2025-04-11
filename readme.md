@@ -7,8 +7,8 @@
 
 ## Daftar Isi
 
-- [Deskripsi Singkat Program](#deskripsi-singkat-repository-dan-program)
-- [Cara set up dan run](#set-up-dan-run)
+- [Deskripsi Singkat Repository dan Program](#deskripsi-singkat-repository-dan-program)
+- [Set up dan run](#set-up-dan-run)
 - [Pembagian Tugas](#pembagian-tugas)
 
 
