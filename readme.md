@@ -1,6 +1,6 @@
 # Tugas Besar 1 IF3270 Pembelajaran Mesin - Feed Forward Neural Network (FFNN)
 
-## Kelompok 48
+## Kelompok 65
 - Kharris Khisunica (13522051)
 - Emery Fathan Zwageri (13522079)
 - Abdul Rafi Radityo Hutomo (13522089)
