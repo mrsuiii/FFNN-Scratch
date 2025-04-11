@@ -13,7 +13,42 @@
 
 
 ## Deskripsi Singkat Repository dan Program
-Repository ini berisi kode implementasi _Feed Forward Neural Network_ (FFNN) yang dibangun dari _scratch_. Kode ini menerima beberapa fungsi aktivasi, fungsi loss, inisialisasi bobot yang diimplementasi secara manual. Kode juga menerima masukan apakah pengguna mau melakukan regularisasi dan normalisasi dengan RMSNorm (Bonus). Model FFNN yang dibangun juga dapat melakukan _forward_ dan _backward_ _propagation_ dengan nilai parameter yang ditentukan oleh pengguna dan menghasilkan histori proses pelatihan.  
+
+### Struktur Repository
+```
+FFNN-Scratch   
+│
+├───doc
+│       Tubes1_G65.pdf
+│
+├───src
+│       activation.py
+│       draw_FFNN.py
+│       FFNN.py
+│       init.py
+│       Layer.py
+│       loss.py
+│       test.ipynb
+│       Value.py
+│       visualize.py
+│
+├───tests
+│      tes.py
+│      test_backprop.py
+│      test_cce_loss.py
+│      test_softmax.py
+│      test_softmax_training.py
+│      test_training.py
+│
+│    readme.md
+```
+
+
+Repository ini berisi kode implementasi _Feed Forward Neural Network_ (FFNN) yang dibangun dari _scratch_ dan diimplementasikan menggunakan **_automic differentiation_**. 
+
+Kode ini menerima beberapa fungsi aktivasi, fungsi loss, inisialisasi bobot yang diimplementasi secara manual. Kode juga menerima masukan apakah pengguna mau melakukan regularisasi dan normalisasi dengan RMSNorm (Bonus). 
+
+Model FFNN yang dibangun juga dapat melakukan _forward_ dan _backward_ _propagation_ dengan nilai parameter yang ditentukan oleh pengguna dan menghasilkan histori proses pelatihan.  
 
 Fungsi aktivasi yang diimplementasikan adalah
 1. _Linear_
@@ -39,6 +74,9 @@ Fungsi inisialisasi bobot yang diimplementasikan adalah
 Fungsi regularisasi yang diimplementasikan adalah
 1. Regularisasi L1
 2. Regularisasi L2
+
+
+
 
 ## Set up dan Run
 1. Pastikan Python sudah terinstal pada komputer yang menjalani program. Instalasi Python dapat dilakukan [di sini](https://www.python.org/downloads/).
